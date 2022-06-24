@@ -1,1 +1,0 @@
-/usr/bin/c++  -g   CMakeFiles/RISC_V.dir/main.cpp.o  -o RISC_V 
