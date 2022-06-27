@@ -1,5 +1,6 @@
 testcases_for_riscv/
 Reference/
 cmake-build-debug/
+.idea/
 
 record.md

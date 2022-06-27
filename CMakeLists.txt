@@ -7,4 +7,8 @@ include_directories(src)
 
 add_executable(RISC_V
         main.cpp
+        src/cpu.hpp
+        src/component.hpp
+        src/Instruction.hpp
+#        Reference/1_flow_fast.cpp
         )
