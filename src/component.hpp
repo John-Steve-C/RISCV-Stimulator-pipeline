@@ -12,14 +12,35 @@
 
 class Clock{
 public:
-    int stall[5];
-    size_t tick;
+    int stall[5], cycle, not_update[5], mem_tick;
+    // cycle 表示当前执行到的时间
+    // mem_tick 表示 距离内存访问结束，需要的时间
 
     Clock() = default;
 
     void timing() {
-        tick++;
-        
+        cycle++;
+        for (int i = 0;i < 5; ++i) {
+            if (stall[i]) --stall[i];
+            if (!mem_tick && not_update[i]) not_update[i]--;
+        }
+        if (mem_tick > 0) mem_tick--;
+    }
+
+    void stall_stage(Stages stage, int time) {
+        stall[stage] += time;
+    }
+
+    void not_update_stage(Stages stage, int time) {
+        not_update[stage] += time;
+    }
+
+    bool stall_check(Stages stage) { //判断当前阶段是否被推迟
+        return stall[stage];
+    }
+
+    bool not_update_check(Stages stage) {
+        return not_update[stage];
     }
 
 };
@@ -105,8 +126,15 @@ class Stage_Register{
 public:
     Instruction ins;
     unsigned int pc, out, op1, op2;
+    //pc 表示当前阶段对应的命令，是从 哪一个位置读入的
+    //out 表示输出到 reg[rd] 的值
 
     Stage_Register() = default;
+
+    void clear() {
+        pc = out = op1 = op2 = 0;
+        ins.clear();
+    }
 };
 
 class ALU{
@@ -139,7 +167,18 @@ public:
                 output = a ^ b;
                 break;
         }
+    }
+};
 
+class BUS{
+public:
+    bool memory_access, jump, branch;
+    unsigned target_pc;
+
+    BUS() = default;
+    void clear() {
+        memory_access = jump = branch = false;
+        target_pc = 0;
     }
 };
 
