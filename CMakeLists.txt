@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 include_directories(src)
 
-add_executable(RISC_V
+add_executable(code
         main.cpp
         src/cpu.hpp
         src/component.hpp

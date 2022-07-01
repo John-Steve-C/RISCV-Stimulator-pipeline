@@ -45,13 +45,23 @@ public:
 class Decoder{
 public:
     void decode(Instruction &ins) {
-        if (ins.cmd == (int) 0x0ff00513) {
+        if (ins.cmd == (int) 0x0ff00513) { //结束
             ins.name = END;
+            ins.rd = ins.rs1 = ins.rs2 = 0;
+            return;
+        }
+
+        if (ins.cmd == 0x00008067) { //返回
+            ins.name = JALR;
+            ins.rs1 = 1;
+            ins.imm = 0;
+            ins.rd = ins.rs2 = 0;
             return;
         }
 
         if (ins.opcode == 0x37 || ins.opcode == 0x17) {
             ins.type = 'U';
+            ins.rs1 = ins.rs2 = 0;
             ins.imm = (ins.cmd >> 12) << 12;
             if (ins.opcode == 0x37) ins.name = LUI;
             else ins.name = AUIPC;
@@ -73,6 +83,7 @@ public:
         } else if (ins.opcode == 0x67 || ins.opcode == 0x3 || ins.opcode == 0x13) {
             ins.type = 'I';
             ins.imm = ins.cmd >> 20;
+//            ins.rs2 = 0;
             if (ins.opcode == 0x67) ins.name = JALR;
             else if (ins.opcode == 0x3) {
                 if (ins.func3 == 0x0) ins.name = LB;
@@ -94,6 +105,7 @@ public:
 
         } else if (ins.opcode == 0x23) {
             ins.type = 'S';
+            ins.rd = 0;
             ins.imm = ((ins.cmd >> 25) << 5) | ((ins.cmd >> 7) & 0x1f);
             if (ins.func3 == 0x0) ins.name = SB;
             else if (ins.func3 == 0x1) ins.name = SH;
@@ -101,12 +113,14 @@ public:
 
         } else if (ins.opcode == 0x6f) {
             ins.type = 'J';
+            ins.rs1 = ins.rs2 = 0;
             ins.imm = ( ((ins.cmd >> 12) & 0xff) << 12) | ( ((ins.cmd >> 20) & 0x1) << 11) |
                       ( ((ins.cmd >> 21) & 0x3ff) << 1) | ( ((ins.cmd >> 31) & 1) << 20);
             ins.name = JAL;
 
         } else if (ins.opcode == 0x63) {
             ins.type = 'B';
+            ins.rd = 0;
             ins.imm = ( ((ins.cmd >> 7) & 0x1) << 11) |
                       ( ((ins.cmd >> 8) & 0xf) << 1) |
                       ( ((ins.cmd >> 25) & 0x3f) << 5) |

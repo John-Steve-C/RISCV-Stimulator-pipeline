@@ -27,6 +27,11 @@ public:
     Clock clk;
     BUS bus; //信号总线
 
+    Branch_Predictor predictor; // 分支预测
+    Data_Transmitter transmitter; //数据传递
+
+    int data_hazard_cnt = 0;
+
     //---------------------------------------------------------------------------
 
     CPU() = default;
@@ -62,7 +67,7 @@ public:
     }
 
     void instruction_fetch() {
-        if (clk.stall_check(IF_stage)) return;
+        if (clk.stall[IF_stage]) return;
 
 //        pc = EXE_MEM.pc;
         // 如果没有 jump 操作，那么 pc += 4
@@ -74,7 +79,7 @@ public:
     }
 
     void instruction_decode() {
-        if (clk.stall_check(ID_stage)) return;
+        if (clk.stall[ID_stage]) return;
         //ID 何时赋值？ 在 pass_cycle 中实现
 //        ID = IF_ID;
         ID_EXE = ID;
@@ -83,6 +88,10 @@ public:
 
         ID_EXE.op1 = regs.read(ID_EXE.ins.rs1);
         ID_EXE.op2 = regs.read(ID_EXE.ins.rs2);
+
+        //data forwarding
+        transmitter.get_data(ID_EXE.ins.rs1, ID_EXE.op1);
+        transmitter.get_data(ID_EXE.ins.rs2, ID_EXE.op2);
 
         if (ID_EXE.ins.name == JAL) {
             ID_EXE.out = ID_EXE.pc + 4;
@@ -101,15 +110,19 @@ public:
         if (ID_EXE.ins.type == 'B') {
             alu.cal(ID_EXE.pc, sign_extend(ID_EXE.ins.imm, 13), '+');
 //            ID_EXE.out = alu.output;
+            if (bus.branch) bus.delay = true;
+            //如果已经需要跳转，那就用 延迟标记 来记录这次指令
             bus.branch = true;
             bus.target_pc = alu.output;
         }
     }
 
     void execute() {
-        if (clk.stall_check(EXE_stage)) return;
+        if (clk.stall[EXE_stage]) return;
 //        EXE = ID_EXE;
         EXE_MEM = EXE;
+
+        bool is_jump = false;
 
         switch (EXE.ins.name) {
             case LUI:
@@ -209,66 +222,65 @@ public:
                 break;
 
             case JAL:case JALR: //已经计算完毕
-                return;
                 break;
             case BEQ:
 //                alu.cal(EXE.op1, EXE.op2, '-');
-                if (EXE.op1 == EXE.op2) {
-                    EXE_MEM.pc = bus.target_pc; // 这里的 pc 表示的是执行后，正确跳转的位置
-                    bus.jump = true;
-                    return;
-                }
+                if (EXE.op1 == EXE.op2) is_jump = true;
                 break;
             case BNE:
 //                alu.cal(EXE.op1, EXE.op2, '-');
-                if (EXE.op1 != EXE.op2) {
-                    EXE_MEM.pc = bus.target_pc;
-                    bus.jump = true;
-                    return;
-                }
+                if (EXE.op1 != EXE.op2) is_jump = true;
                 break;
             case BLT:
 //                alu.cal(EXE.op1, EXE.op2, '-');
-                if ((int) EXE.op1 < (int) EXE.op2) {
-                    EXE_MEM.pc = bus.target_pc;
-                    bus.jump = true;
-                    return;
-                }
+                if ((int) EXE.op1 < (int) EXE.op2) is_jump = true;
                 break;
             case BGE:
 //                alu.cal(EXE.op1, EXE.op2, '-');
-                if ((int) EXE.op1 >= (int) EXE.op2) {
-                    EXE_MEM.pc = bus.target_pc;
-                    bus.jump = true;
-                    return;
-                }
+                if ((int) EXE.op1 >= (int) EXE.op2) is_jump = true;
                 break;
             case BLTU:
 //                alu.cal(EXE.op1, EXE.op2, '-');
-                if (EXE.op1 < EXE.op2) {
-                    EXE_MEM.pc = bus.target_pc;
-                    bus.jump = true;
-                    return;
-                }
+                if (EXE.op1 < EXE.op2) is_jump = true;
                 break;
             case BGEU:
 //                alu.cal(EXE.op1, EXE.op2, '-');
-                if (EXE.op1 >= EXE.op2) {
-                    EXE_MEM.pc = bus.target_pc;
-                    bus.jump = true;
-                    return;
-                }
+                if (EXE.op1 >= EXE.op2) is_jump = true;
                 break;
 
             case END:
                 break;
         }
 
-        EXE_MEM.pc = EXE.pc + 4; // 这里的 pc 表示的是执行后，正确跳转的位置
+        if (EXE.ins.opcode != 0x3) // 不是 load 类指令
+            transmitter.save(EXE_MEM.ins.rd, EXE_MEM.out, EXE_stage);
+
+        if (is_jump) { //分支需要跳转
+            EXE_MEM.pc = bus.target_pc;
+//            bus.jump = true;  //已经修改
+        } else EXE_MEM.pc = EXE.pc + 4; // 这里的 pc 表示的是执行后，正确跳转的位置
+        //分支预测
+        if (bus.branch && predictor.now_pc > 0) {
+            predictor.update(is_jump);
+            if (is_jump ^ bus.predict_ans) { //预测错误
+                predictor.wrong++;
+                //回退到正确的情况
+                pc = EXE_MEM.pc;
+                IF_ID.clear();
+                ID.clear();
+                ID_EXE.clear();
+                bus.clear();
+            } else {
+                predictor.correct++;
+                // 预测正确，不需要跳转
+                if (!bus.delay) bus.branch = false; //没有延迟操作，
+                else bus.delay = false; //清空延迟标记
+            }
+        }
     }
 
     void memory_access() {
-        if (clk.stall_check(MEM_stage)) return;
+        if (clk.stall[MEM_stage]) return;
 //        MEM = EXE_MEM;
         MEM_WB = MEM;
 
@@ -298,45 +310,52 @@ public:
                 memory.write(MEM.out, MEM.op2, 4);
                 break;
         }
+
+//        if (MEM_WB.ins.type != 'S' && MEM_WB.ins.type != 'B') {
+            transmitter.save(MEM_WB.ins.rd, MEM_WB.out, MEM_stage);
+//        }
     }
 
     void write_back_to_register() {
-        if (clk.stall_check(WB_stage)) return;
+        if (clk.stall[WB_stage]) return;
 //        WB = MEM_WB;
         //要判断，S类/B类 指令不需要 write_back
-        if (WB.ins.type != 'S' && WB.ins.type != 'B')
+//        if (WB.ins.type != 'S' && WB.ins.type != 'B')
             regs.write(WB.ins.rd, WB.out);
     }
 
     void print() {
-//        for (int i = 1; i < 32; ++i)
-//            printf("%u ", regs.reg[i]);
-//        std::cout << std::endl;
-        for (int i = 1;i < 5000; ++i)
-            printf("%u ", memory.mem[i]);
+        for (int i = 1; i < 32; ++i)
+            printf("%u ", regs.reg[i]);
         std::cout << std::endl;
+//        for (int i = 1;i < 5000; ++i)
+//            printf("%u ", memory.mem[i]);
+//        std::cout << std::endl;
     }
 
     void pass_cycle() {
-        if (!clk.not_update_check(ID_stage)) {
+        if (!clk.not_update[ID_stage]) {
             ID = IF_ID;
-            if (!clk.stall_check(ID_stage)) IF_ID.clear();
+            if (!clk.stall[ID_stage]) IF_ID.clear();
         }
-        if (!clk.not_update_check(IF_stage)) {
+        if (!clk.not_update[IF_stage]) {
             EXE = ID_EXE;
-            if (!clk.stall_check(EXE_stage)) ID_EXE.clear();
+            if (!clk.stall[EXE_stage]) ID_EXE.clear();
         }
-        if (!clk.not_update_check(EXE_stage)) {
+        if (!clk.not_update[EXE_stage]) {
             MEM = EXE_MEM;
-            if (!clk.stall_check(MEM_stage)) EXE_MEM.clear();
+            if (!clk.stall[MEM_stage]) EXE_MEM.clear();
         }
-        if (!clk.not_update_check(WB_stage)) {
+        if (!clk.not_update[WB_stage]) {
             WB = MEM_WB;
-            if (!clk.stall_check(WB_stage)) MEM_WB.clear();
+            if (!clk.stall[WB_stage]) MEM_WB.clear();
         }
     }
 
-    void judge() { //进行是否需要停顿的判断
+    void judge() { //进行停顿、数据传递等
+        // 更新数据传递器
+        if (clk.mem_tick <= 0) transmitter.update(clk.stall[EXE_stage], clk.stall[MEM_stage]);
+
         if (bus.memory_access) { //用三个周期执行
             bus.memory_access = false;
             clk.mem_tick = 2;
@@ -345,19 +364,51 @@ public:
             clk.stall_stage(IF_stage, 2);
             clk.stall_stage(EXE_stage, 2);
         }
-        if (bus.jump) {
+
+        if (bus.jump) { //如果跳转，清空读入的寄存器
             bus.jump = false;
             pc = bus.target_pc;
             IF_ID.clear();
+        } else if (bus.branch && !predictor.now_pc) {
+            //分支预测
+            bus.predict_ans = predictor.predict(ID_EXE.pc);
+            if (bus.predict_ans) { //预测结果为跳转
+                pc = bus.target_pc;
+                IF_ID.clear();
+            }
+        }
+
+        // 处理 data hazard 的停顿情况
+        if (!clk.not_update[ID_stage]) {
+            bool hazard = false;
+            //第一类，执行访问内存类命令后，而且后面的命令恰好要用到修改的内容
+            // 解决方案：停顿
+            if (  MEM_WB.ins.opcode == 0x3 && MEM_WB.ins.rd && // load 类指令
+                 (MEM_WB.ins.rd == ID_EXE.ins.rs1 || MEM_WB.ins.rd == ID_EXE.ins.rs2)) {
+                clk.stall_stage(EXE_stage, 1);
+                clk.not_update_stage(ID_stage, 1);
+                clk.stall_stage(IF_stage, 1);
+                hazard = true;
+            }
+            //第二类，数据计算完，尚未写入内存，后面的命令也要用到
+            // 解决方案：停顿？应该是向前传递吧？
+            if (EXE_MEM.ins.rd && (EXE_MEM.ins.rd == ID_EXE.ins.rs1 || EXE_MEM.ins.rd == ID_EXE.ins.rs2)) {
+                clk.stall_stage(EXE_stage, 1);
+                clk.not_update_stage(ID_stage, 1);
+                clk.stall_stage(IF_stage, 1);
+                hazard = true;
+            }
+            data_hazard_cnt += hazard;
         }
     }
 
     void run() {
-        while (1) {
-//            std::cout << clk << ": " << WB.pc << " : ";
-            if (EXE.ins.name == END) break;
+        int cnt = 0;
+        while (EXE.ins.name != END) {
+            ++cnt;
+//            std::cout << cnt << ": " << pc << " ---- ";
 
-            pass_cycle();
+            pass_cycle(); //读入上一个周期的输出
 
             //倒序执行，实现伪并行
             write_back_to_register();
@@ -366,13 +417,12 @@ public:
             instruction_decode();
             instruction_fetch();
 
-            clk.timing();
+            clk.timing(); // 时钟工作
+            judge(); //进行更新与特判
 
-            judge();
-
-//            std::cout << WB.pc << " - ";
 //            print();
-//            printf("%x\n", WB.ins.cmd);
+//            clk.display();
+//            transmitter.display();
 
             regs.reg[0] = 0; //每次操作后都要手动清空
         }
