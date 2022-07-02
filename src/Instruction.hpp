@@ -51,13 +51,13 @@ public:
             return;
         }
 
-        if (ins.cmd == 0x00008067) { //返回
-            ins.name = JALR;
-            ins.rs1 = 1;
-            ins.imm = 0;
-            ins.rd = ins.rs2 = 0;
-            return;
-        }
+//        if (ins.cmd == 0x00008067) { //返回
+//            ins.name = JALR;
+//            ins.rs1 = 1;
+//            ins.imm = 0;
+//            ins.rd = ins.rs2 = 0;
+//            return;
+//        }
 
         if (ins.opcode == 0x37 || ins.opcode == 0x17) {
             ins.type = 'U';

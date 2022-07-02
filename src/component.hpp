@@ -196,8 +196,8 @@ public:
         // strong: 如果预测正确就不动，否则变成弱
         // weak: 如果正确，变成强，否则变成另一类的若
         ans[0][0] = 0, ans[0][1] = 1;
-        ans[1][0] = 2, ans[1][1] = 3;
-        ans[2][0] = 0, ans[2][1] = 1;
+        ans[1][0] = 0, ans[1][1] = 2;
+        ans[2][0] = 1, ans[2][1] = 3;
         ans[3][0] = 2, ans[3][1] = 3;
 
         memset(two_counter, 0, sizeof(two_counter));
@@ -251,10 +251,8 @@ public:
     }
 
     void display() {
-        std::cout << "EXOld: " << EXE_rd[0] << ' ' << EXE_val[0] << ' ';
-        std::cout << "MEMOld: " << MEM_rd[0] << ' ' << MEM_val[0] << '\n';
-        std::cout << "EXNew: " << EXE_rd[1] << ' ' << EXE_val[1] << ' ';
-        std::cout << "MEMNew: " << MEM_rd[1]<< ' ' << MEM_val[1] << '\n';
+        std::cout << EXE_rd[0] << ' ' << EXE_val[0] << ' ' << MEM_rd[0] << ' ' << MEM_val[0] << '\n';
+        std::cout << EXE_rd[1] << ' ' << EXE_val[1] << ' ' << MEM_rd[1] << ' ' << MEM_val[1] << '\n';
     }
 };
 

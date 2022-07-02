@@ -403,9 +403,9 @@ public:
     }
 
     void run() {
-        int cnt = 0;
+//        int cnt = 0;
         while (EXE.ins.name != END) {
-            ++cnt;
+//            ++cnt;
 //            std::cout << cnt << ": " << pc << " ---- ";
 
             pass_cycle(); //读入上一个周期的输出
@@ -427,6 +427,10 @@ public:
             regs.reg[0] = 0; //每次操作后都要手动清空
         }
         printf("%u\n", regs.reg[10] & 255u);
+
+        std::cout << "运行周期数：" << clk.cycle << std::endl;
+        std::cout << "预测正确数：" << predictor.correct << std::endl;
+        std::cout << "预测正确率：" << 1.0 * predictor.correct / (predictor.wrong + predictor.correct);
     }
 };
 
