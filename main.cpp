@@ -7,7 +7,7 @@ using namespace std;
 CPU cpu;
 
 int main() {
-//    freopen("testcases_for_riscv/testcases/pi.data", "r", stdin);
+//    freopen("testcases_for_riscv/testcases/tak.data", "r", stdin);
 //    freopen("output.txt", "w", stdout);
 
     cpu.input();

@@ -428,9 +428,9 @@ public:
         }
         printf("%u\n", regs.reg[10] & 255u);
 
-        std::cout << "运行周期数：" << clk.cycle << std::endl;
-        std::cout << "预测正确数：" << predictor.correct << std::endl;
-        std::cout << "预测正确率：" << 1.0 * predictor.correct / (predictor.wrong + predictor.correct);
+//        std::cout << "运行周期数：" << clk.cycle << std::endl;
+//        std::cout << "预测正确数：" << predictor.correct << std::endl;
+//        std::cout << "预测正确率：" << 1.0 * predictor.correct / (predictor.wrong + predictor.correct);
     }
 };
 
