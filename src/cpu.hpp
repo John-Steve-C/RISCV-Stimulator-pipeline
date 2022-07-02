@@ -391,7 +391,7 @@ public:
                 hazard = true;
             }
             //第二类，数据计算完，尚未写入内存，后面的命令也要用到
-            // 解决方案：停顿？应该是向前传递吧？
+            // 解决方案：也只能停顿
             if (EXE_MEM.ins.rd && (EXE_MEM.ins.rd == ID_EXE.ins.rs1 || EXE_MEM.ins.rd == ID_EXE.ins.rs2)) {
                 clk.stall_stage(EXE_stage, 1);
                 clk.not_update_stage(ID_stage, 1);

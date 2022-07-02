@@ -6,14 +6,14 @@
 #define CPU_HPP_INSTRUCTION_HPP
 
 enum TYPE{
-    NOP, // 空指令
-    LUI,AUIPC,  //U类型 用于操作长立即数的指令 0~1
-    ADD,SUB,SLL,SLT,SLTU,XOR,SRL,SRA,OR,AND,  //R类型 寄存器间操作指令 2~11
-    JALR,LB,LH,LW,LBU,LHU,ADDI,SLTI,SLTIU,XORI,ORI,ANDI,SLLI,SRLI,SRAI,  //I类型 短立即数和访存Load操作指令 12~26
-    SB,SH,SW,  //S类型 访存Store操作指令 27~29
-    JAL,  //J类型 用于无条件跳转的指令 30
-    BEQ,BNE,BLT,BGE,BLTU,BGEU, //B类型 用于有条件跳转的指令 31~36
-    END //特殊的结束指令
+    NOP, // 空指令 0
+    LUI,AUIPC,  //U类型 用于操作长立即数的指令 1~2
+    ADD,SUB,SLL,SLT,SLTU,XOR,SRL,SRA,OR,AND,  //R类型 寄存器间操作指令 3~12
+    JALR,LB,LH,LW,LBU,LHU,ADDI,SLTI,SLTIU,XORI,ORI,ANDI,SLLI,SRLI,SRAI,  //I类型 短立即数和访存Load操作指令 13~27
+    SB,SH,SW,  //S类型 访存Store操作指令 28~30
+    JAL,  //J类型 用于无条件跳转的指令 31
+    BEQ,BNE,BLT,BGE,BLTU,BGEU, //B类型 用于有条件跳转的指令 32~37
+    END //特殊的结束指令 38
 };
 
 enum Stages{IF_stage, ID_stage, EXE_stage, MEM_stage, WB_stage};

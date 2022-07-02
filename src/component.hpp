@@ -208,7 +208,7 @@ public:
         return two_counter[now_pc] > 1; // 10, 11: jump, success
     }
 
-    void update(bool _jump = false) { // 用预测结果更新 计数器
+    void update(bool _jump = false) { // 用预测结果更新 此命令的跳转情况
         two_counter[now_pc] = ans[ two_counter[now_pc] ][_jump];
         now_pc = 0;
     }
