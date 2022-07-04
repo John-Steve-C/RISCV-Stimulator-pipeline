@@ -8,6 +8,8 @@ RISC-V（发音为“risk-five”）是一个基于精简指令集（RISC）原�
 
 ### 实现思路
 
+![流程图](https://s3.bmp.ovh/imgs/2022/07/04/8b38a4c5ece04bdd.jpg)
+
 采用的是 **五级流水**（pipeline）
 
 1. 实现 [一级流水](https://acm.sjtu.edu.cn/OnlineJudge/code?submit_id=181614) ，即顺序执行
@@ -23,6 +25,7 @@ RISC-V（发音为“risk-five”）是一个基于精简指令集（RISC）原�
     - structural hazard（某个寄存器需要同时读写数据）（本次作业不出现）
     - data hazard（计算结果尚未写入寄存器/内存，其他命令就要从中读取）
     - control hazard（分支跳转，如果要跳转，那么逆序读入的数据就要清空）
+4. 事实上，可以支持 `random_run`，即任意修改 `run` 函数中五个阶段的执行顺序，不影响结果的正确性。
 
 ### hazard 的解决方法
 
