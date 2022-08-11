@@ -6,6 +6,8 @@ RISC-V（发音为“risk-five”）是一个基于精简指令集（RISC）原�
 
 本次作业里涉及的指令是 RV32I 的一部分。[32位基础整数指令集](https://www.cnblogs.com/mikewolf2002/p/11196680.html) ，它支持32位寻址空间，支持字节地址访问，寄存器也是32位整数寄存器。
 
+对 `pipeline` 思想的简要阐释，以及进一步优化的可能：[crash_courses](https://www.bilibili.com/video/BV1EW411u7th?p=9&vd_source=0fa124ab1764787ecf7605db72a1b0e3)
+
 ### 实现思路
 
 ![流程图](https://s3.bmp.ovh/imgs/2022/07/04/8b38a4c5ece04bdd.jpg)
@@ -32,15 +34,15 @@ RISC-V（发音为“risk-five”）是一个基于精简指令集（RISC）原�
 最简单的办法：停顿，等到上一条指令执行完毕，再进行下一条指令（但效率显然会很低）
 
 #### data hazard：data_forwarding
-       
+
 注意到，主要是在 EXE_MEM 和 MEM_WB 阶段，会发生数据　**已经计算出，但来不及写回**　的情况。
 
 > 这里的已经计算，指的是 数据计算的 cycle（EXE/MEM） 发生在 ID 的 cycle **之前**。
-   
+
 因此，定义 `Data_Transmitter` 类，用来记录这两个阶段的旧数据和新数据，每个 cycle 进行更新。
-   
+
 在 ID 阶段读取出旧数据，计算出结果时保存新数据。每个 cycle 的五个流水执行后，如果不需要 stall，就用新数据来更新旧数据。
-   
+
 如果 hazard 在 **同一个 cycle 中** 发生，那么只能采取停顿：
 - MEM_WB 阶段，命令为访问内存（LB、LH...）
 - EXE_MEM 阶段，非 load 类指令
@@ -52,7 +54,7 @@ RISC-V（发音为“risk-five”）是一个基于精简指令集（RISC）原�
 采用二位饱和预测，`ans[4][2]` 数组表示预测结果。
 
 `0 -> 00, 1 -> 01, 2 -> 10, 3 -> 11`。对应：强不跳、弱不跳、弱跳、强跳
-  
+
 - strong: 如果预测正确就不动，否则变成同类的弱
 - weak: 如果正确，变成强，否则变成另一类的弱
 
@@ -102,6 +104,8 @@ public:
 #### `component.hpp`
 
 模拟实现 CPU 内部的组成，比如时钟、寄存器、内存、算数逻辑单元ALU
+
+注意到，此处的 ALU 实现与真实的 ALU 有差别。真正的 ALU 中，还应该有 zero / negative 的标记。
 
 ```cpp
 class Clock{
